@@ -1,25 +1,24 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PastelAppFrame } from '@/components/PastelAppFrame';
-import { PastelHomeHub } from '@/components/PastelHomeHub';
-import { CircularDialGauge } from '@/components/CircularDialGauge';
-import { WaveFitGraph } from '@/components/WaveFitGraph';
+import { Header } from '@/components/Header';
+import { LiveCameraScan } from '@/components/LiveCameraScan';
+import { PhotoUploadScan } from '@/components/PhotoUploadScan';
 import { VisualLandmarkCanvas } from '@/components/VisualLandmarkCanvas';
 import { MeasurementResults } from '@/components/MeasurementResults';
 import { TailorReportModal } from '@/components/TailorReportModal';
 import { TailorDashboard } from '@/components/TailorDashboard';
-import { LiveCameraScan } from '@/components/LiveCameraScan';
-import { PhotoUploadScan } from '@/components/PhotoUploadScan';
+import { CustomerDashboard } from '@/components/CustomerDashboard';
+import { AccuracyEngineInfo } from '@/components/AccuracyEngineInfo';
 
 import { PoseLandmarks33, BodyMeasurementItem } from '@/types/measurement';
 import { SAMPLE_MALE_LANDMARKS, MALE_MODEL_SVG } from '@/lib/sampleModels';
 import { calculateTailoringMeasurements } from '@/lib/measurementEngine';
-import { Camera, Upload, Sparkles, FileText, ArrowUpRight } from 'lucide-react';
+import { Camera, Upload, Sparkles, ShieldCheck } from 'lucide-react';
 
 export default function Home() {
-  const [activeNav, setActiveNav] = useState<'home' | 'scan' | 'visual' | 'trends' | 'orders' | 'report'>('home');
-  const [scanMode, setScanMode] = useState<'photo_upload' | 'live_camera'>('photo_upload');
+  const [activeTab, setActiveTab] = useState<'scan' | 'tailor' | 'customer' | 'accuracy'>('scan');
+  const [scanMode, setScanMode] = useState<'live_camera' | 'photo_upload'>('photo_upload');
 
   // Calibration State
   const [userHeightCm, setUserHeightCm] = useState<number>(180);
@@ -30,7 +29,7 @@ export default function Home() {
   const [scannedImage, setScannedImage] = useState<string | null>(MALE_MODEL_SVG);
   const [landmarks, setLandmarks] = useState<PoseLandmarks33 | null>(SAMPLE_MALE_LANDMARKS);
 
-  // Measurements State
+  // Calculated Measurements State
   const [measurements, setMeasurements] = useState<BodyMeasurementItem[]>(() =>
     calculateTailoringMeasurements(SAMPLE_MALE_LANDMARKS, null, 180, 'male')
   );
@@ -94,120 +93,128 @@ export default function Home() {
   const overallConfidence = 98.4;
 
   return (
-    <PastelAppFrame
-      activeNav={activeNav}
-      onNavChange={(nav) => {
-        if (nav === 'report') {
-          setIsPdfModalOpen(true);
-        } else {
-          setActiveNav(nav);
-        }
-      }}
-      userHeightCm={userHeightCm}
-      onHeightChange={handleHeightChange}
-    >
-      {/* 1. HOME TAB (Pastel 4-Card Grid & Daily Reflection Hub) */}
-      {activeNav === 'home' && (
-        <PastelHomeHub
-          measurements={measurements}
-          unit={unit}
-          onUnitChange={setUnit}
-          userHeightCm={userHeightCm}
-          gender={gender}
-          onSelectGender={(g) => handlePoseCaptured(scannedImage || MALE_MODEL_SVG, landmarks || SAMPLE_MALE_LANDMARKS, g)}
-          onNavigateToScan={() => setActiveNav('scan')}
-          onOpenReport={() => setIsPdfModalOpen(true)}
-        />
-      )}
+    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
+      {/* Responsive Header Navigation */}
+      <Header
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userHeightCm={userHeightCm}
+        onHeightChange={handleHeightChange}
+        unit={unit}
+        onUnitChange={setUnit}
+      />
 
-      {/* 2. SCAN TAB */}
-      {activeNav === 'scan' && (
-        <div className="flex flex-col gap-5 w-full">
-          <div className="pastel-card p-4 flex items-center justify-between">
-            <h2 className="text-base font-extrabold text-[#1c1c1e] flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#748e64]" />
-              <span>AI Pose Body Scanner</span>
-            </h2>
+      {/* Main App Workspace View */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col gap-6 sm:gap-8">
+        {activeTab === 'scan' && (
+          <div className="flex flex-col gap-6 sm:gap-8">
+            {/* Scan Mode Switcher Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800">
+              <div>
+                <h1 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-cyan-400" />
+                  <span>AI Human Body Scan Studio</span>
+                </h1>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Upload multi-angle photos or use live video camera to generate 20+ tailoring circumferences.
+                </p>
+              </div>
 
-            <div className="flex items-center gap-1 p-1 rounded-full bg-[#fcf8f5] border border-black/5 text-xs">
-              <button
-                onClick={() => setScanMode('photo_upload')}
-                className={`px-3 py-1 rounded-full font-bold transition-all ${
-                  scanMode === 'photo_upload' ? 'bg-[#1c1c1e] text-white' : 'text-[#7c7c82]'
-                }`}
-              >
-                Upload
-              </button>
-              <button
-                onClick={() => setScanMode('live_camera')}
-                className={`px-3 py-1 rounded-full font-bold transition-all ${
-                  scanMode === 'live_camera' ? 'bg-[#1c1c1e] text-white' : 'text-[#7c7c82]'
-                }`}
-              >
-                Camera
-              </button>
+              {/* Mode Toggle Buttons */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs w-full sm:w-auto">
+                <button
+                  onClick={() => setScanMode('photo_upload')}
+                  className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${
+                    scanMode === 'photo_upload'
+                      ? 'bg-cyan-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Photo Studio</span>
+                </button>
+
+                <button
+                  onClick={() => setScanMode('live_camera')}
+                  className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${
+                    scanMode === 'live_camera'
+                      ? 'bg-cyan-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Live Video Scanner</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Input Capture Section */}
+            <div className="p-4 sm:p-6 rounded-2xl bg-slate-900/60 border border-slate-800">
+              {scanMode === 'live_camera' ? (
+                <LiveCameraScan
+                  userHeightCm={userHeightCm}
+                  onCapture={(img, lms) => handlePoseCaptured(img, lms, gender)}
+                />
+              ) : (
+                <PhotoUploadScan
+                  onProcessImages={(front, side, back, lms, g) => handlePoseCaptured(front, lms, g)}
+                />
+              )}
+            </div>
+
+            {/* Dual Column Visualizer & Measurement Specs Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Visual Landmark Canvas (5 cols) */}
+              <div className="lg:col-span-5 flex flex-col gap-3">
+                <h3 className="font-bold text-slate-200 text-sm sm:text-base flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-cyan-400" />
+                  <span>33-Point MediaPipe Pose Visualizer</span>
+                </h3>
+
+                <VisualLandmarkCanvas
+                  imageSrc={scannedImage}
+                  landmarks={landmarks}
+                  measurements={measurements}
+                  unit={unit}
+                  width={520}
+                  height={720}
+                />
+              </div>
+
+              {/* Right Column: Tailoring Measurements Grid (7 cols) */}
+              <div className="lg:col-span-7 flex flex-col gap-3">
+                <MeasurementResults
+                  measurements={measurements}
+                  unit={unit}
+                  onUnitChange={setUnit}
+                  onUpdateMeasurement={handleUpdateMeasurement}
+                  onOpenPdfReport={() => setIsPdfModalOpen(true)}
+                  overallConfidence={overallConfidence}
+                />
+              </div>
             </div>
           </div>
+        )}
 
-          <div className="pastel-card p-4">
-            {scanMode === 'live_camera' ? (
-              <LiveCameraScan
-                userHeightCm={userHeightCm}
-                onCapture={(img, lms) => handlePoseCaptured(img, lms, gender)}
-              />
-            ) : (
-              <PhotoUploadScan
-                onProcessImages={(front, side, back, lms, g) => handlePoseCaptured(front, lms, g)}
-              />
-            )}
-          </div>
+        {/* Tailor Portal */}
+        {activeTab === 'tailor' && (
+          <TailorDashboard onSelectScan={() => setActiveTab('scan')} />
+        )}
 
-          <MeasurementResults
-            measurements={measurements}
+        {/* Customer Portal */}
+        {activeTab === 'customer' && (
+          <CustomerDashboard
+            currentMeasurements={measurements}
+            onOpenReport={() => setIsPdfModalOpen(true)}
             unit={unit}
-            onUnitChange={setUnit}
-            onUpdateMeasurement={handleUpdateMeasurement}
-            onOpenPdfReport={() => setIsPdfModalOpen(true)}
-            overallConfidence={overallConfidence}
           />
-        </div>
-      )}
+        )}
 
-      {/* 3. VISUAL MESH TAB */}
-      {activeNav === 'visual' && (
-        <div className="flex flex-col gap-4 w-full">
-          <VisualLandmarkCanvas
-            imageSrc={scannedImage}
-            landmarks={landmarks}
-            measurements={measurements}
-            unit={unit}
-            width={380}
-            height={520}
-          />
-        </div>
-      )}
+        {/* AI Spec Engine Architecture */}
+        {activeTab === 'accuracy' && <AccuracyEngineInfo />}
+      </main>
 
-      {/* 4. DIAL & TRENDS TAB */}
-      {activeNav === 'trends' && (
-        <div className="flex flex-col gap-5 w-full">
-          <CircularDialGauge
-            overallConfidence={overallConfidence}
-            measurements={measurements}
-            unit={unit}
-            userHeightCm={userHeightCm}
-          />
-          <WaveFitGraph unit={unit} />
-        </div>
-      )}
-
-      {/* 5. TAILOR ORDERS TAB */}
-      {activeNav === 'orders' && (
-        <div className="flex flex-col gap-4 w-full">
-          <TailorDashboard onSelectScan={() => setActiveNav('scan')} />
-        </div>
-      )}
-
-      {/* Printable Tailor PDF Report Modal */}
+      {/* Printable Tailor PDF Tech Pack Report Modal */}
       <TailorReportModal
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
@@ -219,6 +226,6 @@ export default function Home() {
         unit={unit}
         scannedImageSrc={scannedImage}
       />
-    </PastelAppFrame>
+    </div>
   );
 }
