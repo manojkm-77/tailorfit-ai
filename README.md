@@ -18,7 +18,7 @@ The system estimates 20+ actual skin-level body circumferences and lengths requi
   - *Lower Body*: Inseam Length, Outseam Length, Thigh, Knee, Calf, Ankle Circumferences
   - *Full Body*: Standing Height & Leg Length
 - **Real-Time Live Video Scanner**: `getUserMedia` WebCam feed with posture quality validation HUD and auto-capture countdown timer.
-- **Multi-Angle Photo Studio**: Multi-angle upload with Male & Female standard sample model presets.
+- **Multi-Angle Photo Studio**: Multi-angle Front/Side/Back upload with real-time MediaPipe BlazePose landmark detection running in a Web Worker (no synthetic data).
 - **Interactive 2D Landmark Overlay**: HTML5 Canvas rendering glowing keypoint nodes, skeleton mesh, and measurement callout lines with live $\text{cm} / \text{inches}$ unit toggles.
 - **Printable Tailoring Specification Report**: Downloadable/printable PDF tech pack with QR code verification and metric specs table.
 - **Tailor & Customer Dashboards**: Order workflow management (Pending, In Cutting, Stitching, Fitting Ready) and historical body fit trend tracker.
@@ -62,3 +62,11 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## 🔒 License
 
 MIT License. Designed and developed for tailors and fashion designers worldwide.
+
+---
+
+## Monorepo Architecture (production build)
+
+- **`src/` — Next.js 14 client**: MediaPipe PoseLandmarker running in a dedicated Web Worker (`src/lib/mediapipe.worker.ts`), bridged by `src/lib/mediapipeClient.ts`, with multi-view depth fusion in `src/lib/measurementEngine.ts` and real jsPDF/html2canvas tech-pack export.
+- **`backend/` — FastAPI + Celery + PyTorch**: multi-view scan upload/status/results REST API, GPU Celery worker (`process_body_scan_task`), SMPL-X/HMR 2.0 + visual-hull 3D reconstruction, Trimesh anatomical slicing, R2/S3 GLB upload, and Supabase PostgreSQL persistence (`backend/migrations/001_initial_schema.sql`).
+- **`src/lib/easeEngine.ts` — Garment Ease Engine**: Slim/Regular/Relaxed fit-profile allowances → pattern-cut dimensions.

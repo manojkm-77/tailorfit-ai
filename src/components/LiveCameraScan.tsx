@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, CheckCircle2, AlertTriangle, RefreshCw, Sparkles, Volume2, ShieldCheck, Zap } from 'lucide-react';
+import { Camera, CheckCircle2, AlertTriangle, RefreshCw, Sparkles, ShieldCheck, Zap, Loader2 } from 'lucide-react';
 import { PoseLandmarks33, PoseFrameValidation } from '@/types/measurement';
 import { validatePoseQuality } from '@/lib/measurementEngine';
-import { SAMPLE_MALE_LANDMARKS } from '@/lib/sampleModels';
+import { detectPoseFromVideoFrame, initPoseDetector } from '@/lib/mediapipeClient';
 
 interface LiveCameraScanProps {
   onCapture: (capturedImageDataUri: string, detectedLandmarks: PoseLandmarks33) => void;
@@ -15,6 +15,7 @@ export const LiveCameraScan: React.FC<LiveCameraScanProps> = ({ onCapture, userH
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [streamActive, setStreamActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [engineState, setEngineState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [validation, setValidation] = useState<PoseFrameValidation>({
     isFullBodyVisible: false,
     isCentred: false,
@@ -24,9 +25,20 @@ export const LiveCameraScan: React.FC<LiveCameraScanProps> = ({ onCapture, userH
     confidence: 0,
   });
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [autoCaptureEnabled, setAutoCaptureEnabled] = useState(true);
+  const [captureReady, setCaptureReady] = useState(false);
 
-  // Initialize camera feed
+  const streamActiveRef = useRef(streamActive);
+  const cameraErrorRef = useRef(cameraError);
+  const engineReadyRef = useRef(false);
+  const autoCaptureRef = useRef(true);
+  const lastLandmarksRef = useRef<PoseLandmarks33 | null>(null);
+  const destroyedRef = useRef(false);
+  const checkingRef = useRef(false);
+  const checkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  streamActiveRef.current = streamActive;
+  cameraErrorRef.current = cameraError;
+
   const startCamera = async () => {
     try {
       setCameraError(null);
@@ -36,12 +48,11 @@ export const LiveCameraScan: React.FC<LiveCameraScanProps> = ({ onCapture, userH
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        await videoRef.current.play();
         setStreamActive(true);
       }
-    } catch (err: any) {
-      console.warn('Camera access error:', err);
-      setCameraError('Camera access unavailable or blocked. You can use Simulated AI Scan or upload a photo.');
+    } catch {
+      setCameraError('Camera access unavailable or blocked. Use the Photo Studio upload mode instead.');
     }
   };
 
@@ -57,35 +68,91 @@ export const LiveCameraScan: React.FC<LiveCameraScanProps> = ({ onCapture, userH
   useEffect(() => {
     startCamera();
     return () => {
+      destroyedRef.current = true;
+      if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
       stopCamera();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    initPoseDetector()
+      .then((ready) => {
+        if (cancelled) return;
+        engineReadyRef.current = ready;
+        setEngineState(ready ? 'ready' : 'unavailable');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        engineReadyRef.current = false;
+        setEngineState('unavailable');
+      });
+    return () => {
+      cancelled = true;
     };
   }, []);
 
-  // Real-time pose analysis loop
+  const runPoseCheck = async () => {
+    if (checkingRef.current || destroyedRef.current) return;
+    checkingRef.current = true;
+
+    try {
+      if (!engineReadyRef.current || !streamActiveRef.current || cameraErrorRef.current) {
+        if (!engineReadyRef.current && engineState === 'loading') {
+          setValidation({
+            isFullBodyVisible: false,
+            isCentred: false,
+            isDistanceOptimal: false,
+            isPostureStraight: false,
+            guidanceMessage: 'Loading AI vision engine…',
+            confidence: 0,
+          });
+        }
+        return;
+      }
+
+      const { landmarks: detected } = await detectPoseFromVideoFrame(videoRef.current!);
+      if (detected) {
+        lastLandmarksRef.current = detected;
+        const val = validatePoseQuality(detected);
+        setValidation(val);
+        setCaptureReady(val.isFullBodyVisible && val.isCentred && val.isPostureStraight && val.confidence > 85);
+
+        if (autoCaptureRef.current && val.isFullBodyVisible && val.isCentred && val.isPostureStraight && val.confidence > 90) {
+          setCountdown((current) => (current === null ? 3 : current));
+        }
+      } else {
+        setCaptureReady(false);
+        setValidation((prev) => ({
+          ...prev,
+          isFullBodyVisible: false,
+          isCentred: false,
+          isDistanceOptimal: false,
+          isPostureStraight: false,
+          guidanceMessage: 'No person detected — step fully into the frame.',
+          confidence: 0,
+        }));
+      }
+    } catch (err) {
+      console.warn('[TailorFit] Live pose frame detection failed:', err);
+      setValidation((prev) => ({ ...prev, guidanceMessage: 'Pose detection error — retrying…', confidence: 0 }));
+    } finally {
+      checkingRef.current = false;
+      if (!destroyedRef.current) {
+        checkTimerRef.current = setTimeout(runPoseCheck, 50); // ~20 fps pose tracking; MediaPipe cadence is detection-limited
+      }
+    }
+  };
+
   useEffect(() => {
     if (!streamActive && !cameraError) return;
-
-    const interval = setInterval(() => {
-      // Simulate real-time MediaPipe keypoint detection variation
-      const jitter = (Math.random() - 0.5) * 0.004;
-      const currentLandmarks: PoseLandmarks33 = {
-        ...SAMPLE_MALE_LANDMARKS,
-        nose: { ...SAMPLE_MALE_LANDMARKS.nose, x: SAMPLE_MALE_LANDMARKS.nose.x + jitter },
-      };
-
-      const val = validatePoseQuality(currentLandmarks);
-      setValidation(val);
-
-      // Auto capture trigger when posture is fully aligned
-      if (autoCaptureEnabled && val.isFullBodyVisible && val.isCentred && val.isPostureStraight && val.confidence > 90) {
-        if (countdown === null) {
-          setCountdown(3);
-        }
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [streamActive, cameraError, autoCaptureEnabled, countdown]);
+    runPoseCheck();
+    return () => {
+      if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streamActive, cameraError, engineState]);
 
   // Countdown timer handler
   useEffect(() => {
@@ -93,13 +160,19 @@ export const LiveCameraScan: React.FC<LiveCameraScanProps> = ({ onCapture, userH
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (countdown === 0) {
-      handlePerformCapture();
-      setCountdown(null);
     }
+    handlePerformCapture();
+    setCountdown(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countdown]);
 
   const handlePerformCapture = () => {
+    const snapshotLandmarks = lastLandmarksRef.current;
+    if (!snapshotLandmarks) {
+      setValidation((prev) => ({ ...prev, guidanceMessage: 'Stand fully in frame so a pose can be locked before capture.', confidence: 0 }));
+      return;
+    }
+
     let dataUri = '';
     if (videoRef.current && streamActive) {
       const canvas = document.createElement('canvas');
@@ -111,65 +184,73 @@ export const LiveCameraScan: React.FC<LiveCameraScanProps> = ({ onCapture, userH
         dataUri = canvas.toDataURL('image/jpeg');
       }
     }
-    // Fallback if video snapshot empty
-    if (!dataUri) {
-      dataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="%230f172a"/><text x="300" y="400" fill="%2306b6d4" text-anchor="middle">Captured Live Feed Scan</text></svg>';
+    if (dataUri) {
+      onCapture(dataUri, snapshotLandmarks);
     }
-    onCapture(dataUri, SAMPLE_MALE_LANDMARKS);
   };
+
+  const guidanceTone = validation.confidence > 85;
+  const engineOffline = engineState === 'unavailable';
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
       {/* Real-time Guidance Banner */}
       <div
         className={`flex items-center justify-between w-full p-4 rounded-xl border transition-all ${
-          validation.confidence > 90
+          guidanceTone
             ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
             : 'bg-amber-950/60 border-amber-500/50 text-amber-300'
         }`}
       >
         <div className="flex items-center gap-3">
-          {validation.confidence > 90 ? (
-            <CheckCircle2 className="w-6 h-6 text-emerald-400 animate-pulse" />
+          {guidanceTone ? (
+            <CheckCircle2 className="w-6 h-6" />
           ) : (
-            <AlertTriangle className="w-6 h-6 text-amber-400 animate-bounce" />
+            <AlertTriangle className="w-6 h-6" />
           )}
           <div>
-            <div className="font-semibold text-sm">{validation.guidanceMessage}</div>
-            <div className="text-xs opacity-80 font-mono">
-              Posture Score: {validation.confidence}% | Calibrated Height: {userHeightCm} cm
+            <div className="font-bold text-sm text-slate-100">{validation.guidanceMessage}</div>
+            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+              Pose Confidence: {validation.confidence}% • Live MediaPipe BlazePose
             </div>
           </div>
+          {countdown !== null && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-mono text-xl font-black">
+              <span className="animate-pulse">Auto-Capture in {countdown}</span>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setAutoCaptureEnabled(!autoCaptureEnabled)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1 ${
-              autoCaptureEnabled
-                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
-                : 'bg-slate-800 border-slate-700 text-slate-400'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>{autoCaptureEnabled ? 'Auto-Scan ON' : 'Manual Mode'}</span>
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            autoCaptureRef.current = !autoCaptureRef.current;
+          }}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1 ${
+            autoCaptureRef.current
+              ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
+              : 'bg-slate-800 border-slate-700 text-slate-400'
+          }`}
+        >
+          <Zap className="w-3.5 h-3.5" />
+          <span>{autoCaptureRef.current ? 'Auto-Scan ON' : 'Manual Mode'}</span>
+        </button>
       </div>
 
       {/* Video Stream Container with Guide Silhouette Overlay */}
       <div className="relative w-full max-w-[600px] h-[520px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl flex items-center justify-center">
-        {cameraError ? (
+        {cameraError || engineOffline ? (
           <div className="flex flex-col items-center text-center p-6 gap-3">
             <Camera className="w-12 h-12 text-slate-500" />
-            <div className="text-slate-300 text-sm">{cameraError}</div>
-            <button
-              onClick={handlePerformCapture}
-              className="mt-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-sm flex items-center gap-2 transition-all shadow-lg shadow-cyan-600/30"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Perform Simulated AI Live Capture</span>
-            </button>
+            <div className="text-slate-300 text-sm">{cameraError || engineState === 'unavailable' ? 'AI vision engine failed to load (model/WASM fetch). Use Photo Studio upload mode instead.' : ''}</div>
+            {cameraError && (
+              <button
+                onClick={startCamera}
+                className="mt-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-sm flex items-center gap-2 transition-all shadow-lg shadow-cyan-600/30"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Retry Camera Access</span>
+              </button>
+            )}
           </div>
         ) : (
           <video
@@ -180,20 +261,22 @@ export const LiveCameraScan: React.FC<LiveCameraScanProps> = ({ onCapture, userH
           />
         )}
 
-        {/* Laser scanner line effect */}
+        {engineState === 'loading' && !cameraError && (
+          <div className="absolute inset-0 z-10 bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+            <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+            <span className="text-xs text-slate-300 font-mono">Loading MediaPipe vision engine…</span>
+          </div>
+        )}
+
         <div className="scan-laser" />
 
         {/* Human Body Outline Positioning Guide */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
           <svg width="340" height="480" viewBox="0 0 340 480" fill="none" stroke="#06b6d4" strokeWidth="2" strokeDasharray="6 6">
-            {/* Head oval */}
             <ellipse cx="170" cy="50" rx="30" ry="38" />
-            {/* Shoulder to hip body frame */}
             <path d="M 120 95 L 220 95 L 205 240 L 135 240 Z" />
-            {/* Legs */}
             <line x1="150" y1="240" x2="140" y2="440" />
             <line x1="190" y1="240" x2="200" y2="440" />
-            {/* Arms */}
             <line x1="120" y1="95" x2="90" y2="260" />
             <line x1="220" y1="95" x2="250" y2="260" />
           </svg>
@@ -215,7 +298,7 @@ export const LiveCameraScan: React.FC<LiveCameraScanProps> = ({ onCapture, userH
 
           <div className="flex items-center gap-1 text-cyan-400 font-mono">
             <ShieldCheck className="w-4 h-4" />
-            <span>BlazePose 33D</span>
+            <span>BlazePose 33D LIVE</span>
           </div>
         </div>
 

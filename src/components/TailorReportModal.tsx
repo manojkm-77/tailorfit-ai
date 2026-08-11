@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useRef } from 'react';
-import { X, Printer, Download, QrCode, Scissors, ShieldCheck, Calendar, User } from 'lucide-react';
+import React, { useRef, useState, useMemo } from 'react';
+import { X, Printer, Download, QrCode, Scissors, ShieldCheck, Calendar, User, Loader2 } from 'lucide-react';
 import { BodyMeasurementItem } from '@/types/measurement';
 import { QRCodeSVG } from 'qrcode.react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface TailorReportModalProps {
   isOpen: boolean;
@@ -29,19 +31,53 @@ export const TailorReportModal: React.FC<TailorReportModalProps> = ({
   scannedImageSrc,
 }) => {
   const reportRef = useRef<HTMLDivElement | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const reportId = useMemo(() => `TR-${Math.floor(100000 + Math.random() * 900000)}`, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const reportId = `TR-${Math.floor(100000 + Math.random() * 900000)}`;
   const scanDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
+
+  const handleExportPdf = async () => {
+    const node = reportRef.current;
+    if (!node || exporting) return;
+    setExporting(true);
+    try {
+      const canvas = await html2canvas(node, {
+        scale: 2,
+        backgroundColor: '#0f172a',
+        useCORS: true,
+        logging: false,
+      });
+      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      pdf.save(`TailorFit_TechPack_${reportId}.pdf`);
+    } catch (err) {
+      console.error('[TailorFit] PDF export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
@@ -55,11 +91,24 @@ export const TailorReportModal: React.FC<TailorReportModalProps> = ({
 
           <div className="flex items-center gap-3">
             <button
-              onClick={handlePrint}
-              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all"
+              onClick={handleExportPdf}
+              disabled={exporting}
+              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50"
+            >
+              {exporting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              <span>{exporting ? 'Rendering PDF…' : 'Download PDF Tech Pack'}</span>
+            </button>
+
+            <button
+              onClick={() => window.print()}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-all"
+              title="Print"
             >
               <Printer className="w-4 h-4" />
-              <span>Print / Save PDF</span>
             </button>
 
             <button

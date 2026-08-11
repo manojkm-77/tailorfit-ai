@@ -18,6 +18,49 @@ export function getEllipseCircumference(a: number, b: number): number {
   return Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
 }
 
+/** Depth ratio clamps applied when fusing the side-view z-axis */
+export const SIDE_DEPTH_RATIO_MIN = 0.5;
+export const SIDE_DEPTH_RATIO_MAX = 0.95;
+
+/**
+ * Multi-view fusion: derives the ellipse depth ratio (semi-minor / semi-major) from the
+ * MediaPipe z-axis spread of the torso landmarks captured in the side photo.
+ *
+ * MediaPipe z is depth relative to the hip midpoint and uses roughly the same scale as the
+ * normalized x/y axes, so depthCm = zSpan * cmPerUnit. The measured depth is blended with a
+ * gendered anatomical prior (25%) to stay stable against noisy single-frame z values, then
+ * clamped to the sane ellipse envelope.
+ */
+export function getSideDepthRatio(
+  sideLandmarks: PoseLandmarks33,
+  cmPerUnit: number,
+  frontWidthCm: number,
+  fallbackRatio: number
+): number {
+  const joints = [
+    sideLandmarks.leftShoulder,
+    sideLandmarks.rightShoulder,
+    sideLandmarks.chestCenter,
+    sideLandmarks.waistCenter,
+    sideLandmarks.leftHip,
+    sideLandmarks.rightHip,
+    sideLandmarks.hipCenter,
+  ] as const;
+  const zValues: number[] = [];
+  for (const joint of joints) {
+    if (joint && typeof joint.z === 'number') zValues.push(joint.z);
+  }
+  if (zValues.length < 4) return fallbackRatio;
+
+  const depthSpan = Math.max(...zValues) - Math.min(...zValues);
+  if (depthSpan <= 0 || cmPerUnit <= 0 || frontWidthCm <= 0) return fallbackRatio;
+
+  const measuredDepthCm = depthSpan * cmPerUnit;
+  const measuredRatio = measuredDepthCm / frontWidthCm;
+  const blended = 0.75 * measuredRatio + 0.25 * fallbackRatio;
+  return Math.min(SIDE_DEPTH_RATIO_MAX, Math.max(SIDE_DEPTH_RATIO_MIN, blended));
+}
+
 /**
  * Evaluates pose alignment & posture feedback for user video camera or image validation
  */
@@ -99,9 +142,14 @@ export function calculateTailoringMeasurements(
     return getDistance2D(p1, p2) * cmPerUnit * multiplier;
   };
 
-  // Helper circumference estimator using front width & gender-specific depth ratio or side view
+  // Circumference estimator: semi-major a = front x-axis half-width; semi-minor b = side z-axis half-depth.
+  // With a side view, the depth ratio is measured from the real MediaPipe z landmarks; without one we
+  // fall back to gendered anatomical depth ratios (a documented model, never synthetic data).
   const estimateCircumference = (frontWidthCm: number, depthRatioMale = 0.72, depthRatioFemale = 0.68) => {
-    const ratio = gender === 'female' ? depthRatioFemale : depthRatioMale;
+    const fallbackRatio = gender === 'female' ? depthRatioFemale : depthRatioMale;
+    const ratio = sideLandmarks
+      ? getSideDepthRatio(sideLandmarks, cmPerUnit, frontWidthCm, fallbackRatio)
+      : fallbackRatio;
     const semiMajor = frontWidthCm / 2;
     const semiMinor = semiMajor * ratio;
     return getEllipseCircumference(semiMajor, semiMinor);

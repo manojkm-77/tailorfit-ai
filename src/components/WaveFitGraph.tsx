@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle2, TrendingDown, Clock, Scissors, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, TrendingDown } from 'lucide-react';
 
 interface WaveFitGraphProps {
   unit: 'cm' | 'inches';
@@ -10,12 +10,12 @@ interface WaveFitGraphProps {
 export const WaveFitGraph: React.FC<WaveFitGraphProps> = ({ unit }) => {
   return (
     <div className="flex flex-col gap-5 w-full">
-      {/* 1. SVG Wave Graph Card matching reference right phone UI */}
-      <div className="app-card p-5 flex flex-col gap-3 relative overflow-hidden">
+      {/* 1. Interactive SVG Wave Graph Card matching right phone UI */}
+      <div className="obsidian-card p-5 flex flex-col gap-3 relative overflow-hidden">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-bold text-white tracking-tight">Waist Girth History</h3>
-            <p className="text-[11px] text-[#8e8e93]">8 Months Trend Variance</p>
+            <p className="text-[11px] text-[#9ea0a6]">8 Months Trend Variance</p>
           </div>
           <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
             <TrendingDown className="w-3 h-3" />
@@ -26,7 +26,7 @@ export const WaveFitGraph: React.FC<WaveFitGraphProps> = ({ unit }) => {
         {/* Interactive Wave Line Graph */}
         <div className="relative h-32 w-full mt-2 flex items-center justify-center">
           {/* Highlight pill floating over graph matching reference image */}
-          <div className="absolute top-1 left-[58%] -translate-x-1/2 px-2 py-0.5 rounded-full bg-[#27272a] border border-white/20 text-[9px] font-mono text-white font-bold shadow-lg z-10">
+          <div className="absolute top-1 left-[58%] -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-[#24242a] border border-white/20 text-[9px] font-mono text-white font-bold shadow-lg z-10">
             Aug Scan
           </div>
 
@@ -37,7 +37,7 @@ export const WaveFitGraph: React.FC<WaveFitGraphProps> = ({ unit }) => {
             {/* Glowing Gradient fill under wave */}
             <defs>
               <linearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.2" />
                 <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
               </linearGradient>
             </defs>
@@ -67,7 +67,7 @@ export const WaveFitGraph: React.FC<WaveFitGraphProps> = ({ unit }) => {
         </div>
 
         {/* X-Axis labels matching reference UI */}
-        <div className="flex justify-between text-[10px] text-[#71717a] font-mono pt-1 border-t border-white/5">
+        <div className="flex justify-between text-[10px] text-[#9ea0a6] font-mono pt-1 border-t border-white/5">
           <span>Jan</span>
           <span>Mar</span>
           <span>May</span>
@@ -77,8 +77,8 @@ export const WaveFitGraph: React.FC<WaveFitGraphProps> = ({ unit }) => {
         </div>
       </div>
 
-      {/* 2. Circular Stage Card matching reference UI */}
-      <div className="app-card p-4 flex items-center gap-4">
+      {/* 2. Circular Stage Verification Card matching reference right screen UI */}
+      <div className="obsidian-card p-4 sm:p-5 flex items-center gap-4">
         <div className="relative w-14 h-14 shrink-0 flex items-center justify-center font-mono font-bold text-xs text-white">
           <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
             <path
@@ -95,18 +95,18 @@ export const WaveFitGraph: React.FC<WaveFitGraphProps> = ({ unit }) => {
               strokeDasharray="98, 100"
             />
           </svg>
-          <span className="absolute">98%</span>
+          <span className="absolute text-sm">98%</span>
         </div>
 
         <div>
-          <div className="text-[10px] text-[#8e8e93] uppercase font-mono tracking-wider font-semibold">Stage 3 Verification</div>
-          <div className="text-xs font-bold text-white mt-0.5">Automated Pattern Cutting Specifications</div>
-          <div className="text-[11px] text-[#a1a1aa] mt-0.5">Approved by Master Tailor Pietro</div>
+          <div className="text-[10px] text-[#9ea0a6] uppercase font-mono tracking-wider font-semibold">Stage 3 Verification</div>
+          <div className="text-xs sm:text-sm font-bold text-white mt-0.5">Automated Pattern Cutting Specs</div>
+          <div className="text-[11px] text-[#9ea0a6] mt-0.5">Approved by Master Tailor Pietro</div>
         </div>
       </div>
 
-      {/* 3. Task Timeline List matching reference right screen */}
-      <div className="app-card p-4 flex flex-col gap-3">
+      {/* 3. Task Timeline List matching right screen in reference UI */}
+      <div className="obsidian-card p-4 sm:p-5 flex flex-col gap-3">
         <div className="text-xs font-bold text-white">Fitting Pipeline Logs</div>
 
         <div className="space-y-3">
@@ -122,16 +122,16 @@ export const WaveFitGraph: React.FC<WaveFitGraphProps> = ({ unit }) => {
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 ${
                     item.status === 'done'
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                      : 'bg-[#27272a] text-[#71717a] border border-white/5'
+                      : 'bg-[#24242a] text-[#71717a] border border-white/5'
                   }`}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                 </div>
-                <span className={item.status === 'done' ? 'text-[#e4e4e7] font-medium' : 'text-[#71717a]'}>
+                <span className={item.status === 'done' ? 'text-white font-medium' : 'text-[#71717a]'}>
                   {item.title}
                 </span>
               </div>
-              <span className="text-[10px] text-[#71717a] font-mono">{item.time}</span>
+              <span className="text-[10px] text-[#9ea0a6] font-mono">{item.time}</span>
             </div>
           ))}
         </div>

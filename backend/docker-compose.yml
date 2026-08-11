@@ -1,0 +1,44 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env.example
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/srv/backend/app
+      - ./migrations:/srv/backend/migrations
+      - scan-storage:/srv/backend/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery-worker:
+    build: .
+    command: celery -A app.tasks.scan_worker:celery_app worker --loglevel=info --concurrency=1
+    env_file:
+      - .env.example
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./app:/srv/backend/app
+      - scan-storage:/srv/backend/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  scan-storage:
