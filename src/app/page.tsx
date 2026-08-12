@@ -1,13 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Header, PageView } from '@/components/Header';
-import { HomePageView } from '@/components/HomePageView';
-import { PhotoUploadScan } from '@/components/PhotoUploadScan';
-import { LiveCameraScan } from '@/components/LiveCameraScan';
+import { Header } from '@/components/Header';
+import { BottomNav, MobileTab } from '@/components/BottomNav';
+
+import { MobileHomeView } from '@/components/MobileHomeView';
+import { MobileScanView } from '@/components/MobileScanView';
+import { MeasurementHistoryView } from '@/components/MeasurementHistoryView';
+import { MobileReportsView } from '@/components/MobileReportsView';
+import { MobileProfileView } from '@/components/MobileProfileView';
+
 import { ProcessingView } from '@/components/ProcessingView';
 import { MeasurementResults } from '@/components/MeasurementResults';
-import { MeasurementHistoryView } from '@/components/MeasurementHistoryView';
 import { TailorDashboard } from '@/components/TailorDashboard';
 import { TailorReportModal } from '@/components/TailorReportModal';
 
@@ -17,7 +21,8 @@ import { calculateTailoringMeasurements } from '@/lib/measurementEngine';
 import { AccuracyValidationResult, validateStrictQualityGates } from '@/lib/validationEngine';
 
 export default function Home() {
-  const [activePage, setActivePage] = useState<PageView>('home');
+  const [activeTab, setActiveTab] = useState<MobileTab>('home');
+  const [activeSubView, setActiveSubView] = useState<'normal' | 'processing' | 'results' | 'tailor_dashboard'>('normal');
 
   // Calibration State
   const [userHeightCm, setUserHeightCm] = useState<number>(180);
@@ -39,7 +44,7 @@ export default function Home() {
   // PDF Report Modal State
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
-  // Process image capture -> transition to Processing -> transition to Results
+  // Process pose capture -> transition to processing -> results
   const handlePoseCaptured = (
     imageUri: string,
     detectedLandmarks: PoseLandmarks33,
@@ -64,7 +69,7 @@ export default function Home() {
       selectedGender
     );
     setMeasurements(calculated);
-    setActivePage('processing');
+    setActiveSubView('processing');
   };
 
   // Height update recalculation
@@ -103,59 +108,42 @@ export default function Home() {
 
   const overallConfidence = validationResult?.overallConfidence ?? 98.4;
 
+  const handleTabChange = (tab: MobileTab) => {
+    setActiveTab(tab);
+    setActiveSubView('normal');
+  };
+
   return (
     <div className="min-h-screen bg-[#ebf3f2] text-[#1a2e30] flex flex-col font-sans">
-      {/* Header Navigation Bar */}
+      {/* Top Header Navigation */}
       <Header
-        activePage={activePage}
-        onNavigate={setActivePage}
+        activePage={activeTab === 'scan' ? 'photo_upload' : (activeTab as any)}
+        onNavigate={(p) => {
+          if (p === 'tailor_dashboard') {
+            setActiveSubView('tailor_dashboard');
+          } else if (p === 'photo_upload') {
+            handleTabChange('scan');
+          } else if (p === 'history') {
+            handleTabChange('history');
+          } else {
+            handleTabChange('home');
+          }
+        }}
         userHeightCm={userHeightCm}
         onHeightChange={handleHeightChange}
         unit={unit}
         onUnitChange={setUnit}
       />
 
-      {/* Main Page Workspace View */}
+      {/* Main Page Content Body */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col items-center">
-        {/* Page 1: Home */}
-        {activePage === 'home' && (
-          <HomePageView
-            onNavigate={setActivePage}
-            measurements={measurements}
-            unit={unit}
-            userHeightCm={userHeightCm}
-          />
+        {/* Processing Subview */}
+        {activeSubView === 'processing' && (
+          <ProcessingView onComplete={() => setActiveSubView('results')} />
         )}
 
-        {/* Page 2: Photo Upload */}
-        {activePage === 'photo_upload' && (
-          <PhotoUploadScan
-            onProcessImages={(front, _side, _back, fLms, sLms, _bLms, g, val) =>
-              handlePoseCaptured(front, fLms, g, sLms, val)
-            }
-            selectedGender={gender}
-            onGenderChange={setGender}
-            onSwitchToCamera={() => setActivePage('camera_scan')}
-            userHeightCm={userHeightCm}
-          />
-        )}
-
-        {/* Page 3: Camera Scan */}
-        {activePage === 'camera_scan' && (
-          <LiveCameraScan
-            userHeightCm={userHeightCm}
-            onCapture={(img, lms) => handlePoseCaptured(img, lms, gender)}
-            onSwitchToPhoto={() => setActivePage('photo_upload')}
-          />
-        )}
-
-        {/* Page 4: Processing */}
-        {activePage === 'processing' && (
-          <ProcessingView onComplete={() => setActivePage('results')} />
-        )}
-
-        {/* Page 5: Results */}
-        {activePage === 'results' && (
+        {/* Results Subview */}
+        {activeSubView === 'results' && (
           <MeasurementResults
             measurements={measurements}
             unit={unit}
@@ -168,16 +156,64 @@ export default function Home() {
           />
         )}
 
-        {/* Page 6: Measurement History */}
-        {activePage === 'history' && (
-          <MeasurementHistoryView onNavigate={setActivePage} unit={unit} />
+        {/* Tailor Dashboard Subview */}
+        {activeSubView === 'tailor_dashboard' && (
+          <TailorDashboard onSelectScan={() => handleTabChange('scan')} />
         )}
 
-        {/* Page 7: Tailor Dashboard */}
-        {activePage === 'tailor_dashboard' && (
-          <TailorDashboard onSelectScan={() => setActivePage('photo_upload')} />
+        {/* Normal Views */}
+        {activeSubView === 'normal' && (
+          <>
+            {activeTab === 'home' && (
+              <MobileHomeView
+                onTabChange={handleTabChange}
+                measurements={measurements}
+                unit={unit}
+                userHeightCm={userHeightCm}
+              />
+            )}
+
+            {activeTab === 'scan' && (
+              <MobileScanView
+                userHeightCm={userHeightCm}
+                gender={gender}
+                onGenderChange={setGender}
+                onPoseCaptured={handlePoseCaptured}
+              />
+            )}
+
+            {activeTab === 'history' && (
+              <MeasurementHistoryView
+                onNavigate={(p) => (p === 'photo_upload' ? handleTabChange('scan') : handleTabChange('home'))}
+                unit={unit}
+              />
+            )}
+
+            {activeTab === 'reports' && (
+              <MobileReportsView
+                onOpenPdfReport={() => setIsPdfModalOpen(true)}
+                measurements={measurements}
+                unit={unit}
+                userHeightCm={userHeightCm}
+              />
+            )}
+
+            {activeTab === 'profile' && (
+              <MobileProfileView
+                userHeightCm={userHeightCm}
+                onHeightChange={handleHeightChange}
+                gender={gender}
+                onGenderChange={setGender}
+                unit={unit}
+                onUnitChange={setUnit}
+              />
+            )}
+          </>
         )}
       </main>
+
+      {/* Bottom Mobile Navigation Dock */}
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
 
       {/* Printable Tailor PDF Tech Pack Report Modal */}
       <TailorReportModal
