@@ -24,41 +24,39 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-[#ebf3f2]/95 backdrop-blur-md border-b border-[#1a2e30]/10 px-4 sm:px-8 py-3">
-      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
         {/* Brand Logo */}
-        <div className="flex items-center justify-between w-full sm:w-auto">
-          <button
-            onClick={() => onNavigate('home')}
-            className="flex items-center gap-2.5 text-left focus:outline-none"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-[#0d484b] flex items-center justify-center text-white shadow-md shadow-[#0d484b]/10">
-              <Scissors className="w-5 h-5 text-emerald-300" />
-            </div>
-            <div>
-              <div className="font-extrabold text-lg text-[#1a2e30] tracking-tight leading-none">
-                TailorFit <span className="text-[#0d484b]">AI</span>
-              </div>
-              <p className="text-[11px] text-[#5b7173] font-medium leading-none mt-1">
-                Body Measurement &amp; Fit Studio
-              </p>
-            </div>
-          </button>
-
-          {/* Quick Height Calibration on Mobile */}
-          <div className="flex sm:hidden items-center gap-1 bg-white px-2.5 py-1 rounded-full border border-[#1a2e30]/10 text-xs font-semibold">
-            <span className="text-[#5b7173]">Scale:</span>
-            <input
-              type="number"
-              value={userHeightCm}
-              onChange={(e) => onHeightChange(Number(e.target.value) || 180)}
-              className="w-8 bg-transparent text-center font-bold text-[#0d484b] outline-none"
-            />
-            <span className="text-[#1a2e30]">cm</span>
+        <button
+          onClick={() => onNavigate('home')}
+          className="flex items-center gap-2.5 text-left focus:outline-none"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-[#0d484b] flex items-center justify-center text-white shadow-md shadow-[#0d484b]/10">
+            <Scissors className="w-5 h-5 text-emerald-300" />
           </div>
+          <div>
+            <div className="font-extrabold text-lg text-[#1a2e30] tracking-tight leading-none">
+              TailorFit <span className="text-[#0d484b]">AI</span>
+            </div>
+            <p className="text-[11px] text-[#5b7173] font-medium leading-none mt-1">
+              Body Measurement &amp; Fit Studio
+            </p>
+          </div>
+        </button>
+
+        {/* Quick Height Calibration on Mobile */}
+        <div className="flex sm:hidden items-center gap-1 bg-white px-2.5 py-1 rounded-full border border-[#1a2e30]/10 text-xs font-semibold shadow-sm">
+          <span className="text-[#5b7173]">Scale:</span>
+          <input
+            type="number"
+            value={userHeightCm}
+            onChange={(e) => onHeightChange(Number(e.target.value) || 180)}
+            className="w-8 bg-transparent text-center font-bold text-[#0d484b] outline-none"
+          />
+          <span className="text-[#1a2e30]">cm</span>
         </div>
 
-        {/* Navigation Pills (Finch/Headspace Style Card Navigation) */}
-        <div className="flex items-center gap-1.5 p-1.5 rounded-full bg-white border border-[#1a2e30]/10 text-xs shadow-sm overflow-x-auto no-scrollbar w-full sm:w-auto">
+        {/* Navigation Pills - HIDDEN ON MOBILE (hidden sm:flex), handled by BottomNav */}
+        <div className="hidden sm:flex items-center gap-1.5 p-1.5 rounded-full bg-white border border-[#1a2e30]/10 text-xs shadow-sm overflow-x-auto no-scrollbar">
           <button
             onClick={() => onNavigate('home')}
             className={`px-4 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all ${
