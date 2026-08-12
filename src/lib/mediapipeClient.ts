@@ -1,9 +1,12 @@
-﻿'use client';
+'use client';
 
 import { PoseLandmarks33 } from '@/types/measurement';
 
-export const POSE_LANDMARKER_MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+/**
+ * Pose landmarker model, vendored under public/models so the app has no runtime
+ * CDN dependency. Swap to the Google CDN URL if you ship without the asset.
+ */
+export const POSE_LANDMARKER_MODEL_URL = '/models/pose_landmarker_lite.task';
 
 export const POSE_WASM_BASE = '/wasm';
 
@@ -92,7 +95,8 @@ export async function initPoseDetector(): Promise<boolean> {
   try {
     await getWorker();
     return true;
-  } catch {
+  } catch (err) {
+    console.error('[TailorFit] Pose engine initialization failed:', err);
     return false;
   }
 }

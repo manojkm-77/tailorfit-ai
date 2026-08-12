@@ -1,4 +1,4 @@
-﻿/// <reference lib="webworker" />
+/// <reference lib="webworker" />
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
 import { PoseLandmarks33 } from '@/types/measurement';
 import { mapMediaPipeLandmarks } from './poseMapping';
@@ -29,16 +29,35 @@ function ensureInitialized(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
       const vision = await FilesetResolver.forVisionTasks(wasmBase);
-      const baseOptions = { modelAssetPath, delegate: 'GPU' as const };
       const shared = {
-        baseOptions,
+        baseOptions: { modelAssetPath },
         numPoses: 1,
         minPoseDetectionConfidence: 0.5,
         minPosePresenceConfidence: 0.5,
         minTrackingConfidence: 0.5,
       };
-      imageLandmarker = await PoseLandmarker.createFromOptions(vision, { ...shared, runningMode: 'IMAGE' as const });
-      videoLandmarker = await PoseLandmarker.createFromOptions(vision, { ...shared, runningMode: 'VIDEO' as const });
+
+      // Try the fast GPU delegate first; fall back to CPU on WebGL-less or
+      // headless/software-rendering environments (e.g. CI browsers).
+      let lastError: unknown;
+      for (const delegate of ['GPU', 'CPU'] as const) {
+        try {
+          imageLandmarker = await PoseLandmarker.createFromOptions(vision, {
+            ...shared,
+            baseOptions: { modelAssetPath, delegate },
+            runningMode: 'IMAGE' as const,
+          });
+          videoLandmarker = await PoseLandmarker.createFromOptions(vision, {
+            ...shared,
+            baseOptions: { modelAssetPath, delegate },
+            runningMode: 'VIDEO' as const,
+          });
+          return;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      throw lastError instanceof Error ? lastError : new Error('Pose landmarker init failed for all delegates');
     })();
     initPromise.catch(() => {
       initPromise = null;
