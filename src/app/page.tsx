@@ -2,30 +2,28 @@
 
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
-import { ModelHeroCard } from '@/components/ModelHeroCard';
-import { CircularDialGauge } from '@/components/CircularDialGauge';
-import { WaveFitGraph } from '@/components/WaveFitGraph';
+import { StepWizardNav, StepId } from '@/components/StepWizardNav';
 import { LiveCameraScan } from '@/components/LiveCameraScan';
 import { PhotoUploadScan } from '@/components/PhotoUploadScan';
 import { VisualLandmarkCanvas } from '@/components/VisualLandmarkCanvas';
 import { MeasurementResults } from '@/components/MeasurementResults';
 import { TailorReportModal } from '@/components/TailorReportModal';
 import { TailorDashboard } from '@/components/TailorDashboard';
-import { AccuracyEngineInfo } from '@/components/AccuracyEngineInfo';
 
 import { PoseLandmarks33, BodyMeasurementItem } from '@/types/measurement';
 import { SAMPLE_MALE_LANDMARKS, MALE_MODEL_SVG } from '@/lib/sampleModels';
 import { calculateTailoringMeasurements } from '@/lib/measurementEngine';
-import { Camera, Upload, Sparkles, ShieldCheck } from 'lucide-react';
+import { Camera, Upload, SlidersHorizontal, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'scan' | 'trends' | 'visual' | 'orders' | 'accuracy'>('scan');
+  const [activeNav, setActiveNav] = useState<'wizard' | 'orders'>('wizard');
+  const [wizardStep, setWizardStep] = useState<StepId>(1);
   const [scanMode, setScanMode] = useState<'photo_upload' | 'live_camera'>('photo_upload');
 
   // Calibration State
   const [userHeightCm, setUserHeightCm] = useState<number>(180);
   const [unit, setUnit] = useState<'cm' | 'inches'>('cm');
-  const [gender, setGender] = useState<'male' | 'female' | 'unisex'>('male');
+  const [gender, setGender] = useState<'male' | 'female'>('male');
 
   // Scan Capture State
   const [scannedImage, setScannedImage] = useState<string | null>(MALE_MODEL_SVG);
@@ -43,7 +41,7 @@ export default function Home() {
   const handlePoseCaptured = (
     imageUri: string,
     detectedLandmarks: PoseLandmarks33,
-    selectedGender: 'male' | 'female' | 'unisex' = 'male',
+    selectedGender: 'male' | 'female' = 'male',
     sideLandmarks: PoseLandmarks33 | null = null
   ) => {
     setScannedImage(imageUri);
@@ -57,6 +55,7 @@ export default function Home() {
       selectedGender
     );
     setMeasurements(calculated);
+    setWizardStep(3); // Advance to Step 3 Review Specs
   };
 
   // Height update recalculation
@@ -96,78 +95,122 @@ export default function Home() {
   const overallConfidence = 98.4;
 
   return (
-    <div className="min-h-screen bg-[#08080a] text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#090a0f] text-white flex flex-col font-sans">
       {/* Header Navigation Bar */}
       <Header
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+        activeTab={activeNav}
+        onTabChange={setActiveNav}
         userHeightCm={userHeightCm}
         onHeightChange={handleHeightChange}
         unit={unit}
         onUnitChange={setUnit}
-        onOpenReport={() => setIsPdfModalOpen(true)}
       />
 
       {/* Main Workspace View */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col gap-6 sm:gap-8">
-        {/* 1. SCAN STUDIO TAB */}
-        {activeTab === 'scan' && (
-          <div className="flex flex-col gap-6 sm:gap-8">
-            {/* Top Grid: Hero Model Card + Scan Mode Switcher */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left Column: Hero Model Card matching Left Phone UI mockup (5 cols) */}
-              <div className="lg:col-span-5 flex flex-col gap-4">
-                <ModelHeroCard
-                  gender={gender}
-                  onSelectGender={(g) => handlePoseCaptured(scannedImage || MALE_MODEL_SVG, landmarks || SAMPLE_MALE_LANDMARKS, g)}
-                  measurements={measurements}
-                  unit={unit}
-                  scannedImage={scannedImage}
-                  userHeightCm={userHeightCm}
-                />
-              </div>
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col gap-6 sm:gap-8">
+        {activeNav === 'wizard' ? (
+          <div className="flex flex-col gap-6">
+            {/* 4-Step Guided Wizard Progress Header */}
+            <StepWizardNav currentStep={wizardStep} onStepClick={setWizardStep} />
 
-              {/* Right Column: Camera / Upload Studio & Specs Grid (7 cols) */}
-              <div className="lg:col-span-7 flex flex-col gap-5">
-                {/* Mode Switcher */}
-                <div className="obsidian-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-cyan-400" />
-                      <span>AI Body Pose Capture</span>
-                    </h2>
-                    <p className="text-xs text-[#9ea0a6] mt-0.5">Upload multi-angle photos or use live camera scanner.</p>
+            {/* STEP 1: CALIBRATION */}
+            {wizardStep === 1 && (
+              <div className="p-6 rounded-2xl bg-[#111318] border border-[#222630] flex flex-col gap-6">
+                <div>
+                  <h1 className="text-xl font-extrabold text-white">Step 1: Calibration &amp; Fitting Profile</h1>
+                  <p className="text-xs text-[#8b90a0] mt-1">
+                    Set your standing height scale and select your anatomical fitting model.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Height Input Card */}
+                  <div className="p-5 rounded-xl bg-[#181b22] border border-[#222630] flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-xs text-[#8b90a0]">
+                      <SlidersHorizontal className="w-4 h-4 text-white" />
+                      <span className="font-bold text-white">Standing Height Scale</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        value={userHeightCm}
+                        onChange={(e) => handleHeightChange(Number(e.target.value) || 180)}
+                        className="w-28 px-3 py-2 rounded-xl bg-[#090a0f] border border-white text-white font-mono text-xl font-black text-center outline-none"
+                      />
+                      <span className="text-sm font-bold text-[#8b90a0]">Centimeters (cm)</span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#18181c] border border-white/10 text-xs w-full sm:w-auto">
+                  {/* Fitting Gender Model */}
+                  <div className="p-5 rounded-xl bg-[#181b22] border border-[#222630] flex flex-col gap-3">
+                    <div className="text-xs font-bold text-white">Fitting Model Profile</div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setGender('male')}
+                        className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
+                          gender === 'male' ? 'bg-white text-black' : 'bg-[#090a0f] text-[#8b90a0] border border-[#222630]'
+                        }`}
+                      >
+                        Male Fitting
+                      </button>
+
+                      <button
+                        onClick={() => setGender('female')}
+                        className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
+                          gender === 'female' ? 'bg-white text-black' : 'bg-[#090a0f] text-[#8b90a0] border border-[#222630]'
+                        }`}
+                      >
+                        Female Fitting
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SINGLE PRIMARY CTA */}
+                <div className="flex justify-end pt-4 border-t border-[#222630]">
+                  <button
+                    onClick={() => setWizardStep(2)}
+                    className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-white text-black font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-white/90 shadow-sm"
+                  >
+                    <span>Continue to Pose Capture</span>
+                    <ArrowRight className="w-4 h-4 text-black" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: POSE CAPTURE */}
+            {wizardStep === 2 && (
+              <div className="flex flex-col gap-6">
+                <div className="p-4 rounded-xl bg-[#111318] border border-[#222630] flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-bold text-white">Step 2: Pose Capture Studio</h2>
+                    <p className="text-xs text-[#8b90a0]">Upload multi-angle photos or stream live video webcam.</p>
+                  </div>
+
+                  <div className="flex items-center gap-1 p-1 rounded-xl bg-[#181b22] border border-[#222630] text-xs">
                     <button
                       onClick={() => setScanMode('photo_upload')}
-                      className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${
-                        scanMode === 'photo_upload'
-                          ? 'bg-white text-black shadow'
-                          : 'text-[#9ea0a6] hover:text-white'
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                        scanMode === 'photo_upload' ? 'bg-white text-black' : 'text-[#8b90a0] hover:text-white'
                       }`}
                     >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Photo Studio</span>
+                      Photo Studio
                     </button>
-
                     <button
                       onClick={() => setScanMode('live_camera')}
-                      className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${
-                        scanMode === 'live_camera'
-                          ? 'bg-white text-black shadow'
-                          : 'text-[#9ea0a6] hover:text-white'
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                        scanMode === 'live_camera' ? 'bg-white text-black' : 'text-[#8b90a0] hover:text-white'
                       }`}
                     >
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>Live Camera</span>
+                      Live Video Scanner
                     </button>
                   </div>
                 </div>
 
-                {/* Input Container */}
-                <div className="obsidian-card p-4 sm:p-5">
+                <div className="p-6 rounded-2xl bg-[#111318] border border-[#222630]">
                   {scanMode === 'live_camera' ? (
                     <LiveCameraScan
                       userHeightCm={userHeightCm}
@@ -178,70 +221,78 @@ export default function Home() {
                       onProcessImages={(front, _side, _back, fLms, sLms, _bLms, g) =>
                         handlePoseCaptured(front, fLms, g, sLms)
                       }
+                      selectedGender={gender}
+                      onGenderChange={setGender}
                     />
                   )}
                 </div>
-
-                {/* 20 Tailoring Measurements Specs */}
-                <MeasurementResults
-                  measurements={measurements}
-                  unit={unit}
-                  onUnitChange={setUnit}
-                  onUpdateMeasurement={handleUpdateMeasurement}
-                  onOpenPdfReport={() => setIsPdfModalOpen(true)}
-                  overallConfidence={overallConfidence}
-                />
               </div>
-            </div>
+            )}
+
+            {/* STEP 3: REVIEW SPECS */}
+            {wizardStep === 3 && (
+              <div className="flex flex-col gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Visualizer Canvas (5 cols) */}
+                  <div className="lg:col-span-5 flex flex-col gap-3">
+                    <div className="font-bold text-white text-xs flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>33-Point MediaPipe Landmark Canvas</span>
+                    </div>
+
+                    <VisualLandmarkCanvas
+                      imageSrc={scannedImage}
+                      landmarks={landmarks}
+                      measurements={measurements}
+                      unit={unit}
+                      width={480}
+                      height={640}
+                    />
+                  </div>
+
+                  {/* 20 Measurements Specs (7 cols) */}
+                  <div className="lg:col-span-7 flex flex-col gap-3">
+                    <MeasurementResults
+                      measurements={measurements}
+                      unit={unit}
+                      onUnitChange={setUnit}
+                      onUpdateMeasurement={handleUpdateMeasurement}
+                      onOpenPdfReport={() => setIsPdfModalOpen(true)}
+                      overallConfidence={overallConfidence}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: GARMENT TECH PACK */}
+            {wizardStep === 4 && (
+              <div className="p-8 rounded-2xl bg-[#111318] border border-[#222630] flex flex-col items-center justify-center text-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-black text-white">Garment Tech Pack Ready</h2>
+                  <p className="text-xs text-[#8b90a0] mt-1 max-w-md">
+                    All 20 body perimeters and pattern cut sheets have been generated for Master Pattern Cutters.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setIsPdfModalOpen(true)}
+                  className="px-8 py-3.5 rounded-xl bg-white text-black font-extrabold text-sm flex items-center gap-2 hover:bg-white/90 shadow-sm mt-2"
+                >
+                  <span>Open PDF Tech Pack Specification Report</span>
+                  <ArrowRight className="w-4 h-4 text-black" />
+                </button>
+              </div>
+            )}
           </div>
+        ) : (
+          /* TAILOR PORTAL TAB */
+          <TailorDashboard onSelectScan={() => setActiveNav('wizard')} />
         )}
-
-        {/* 2. DIAL & TRENDS TAB (Matching Middle & Right Phone UI Mockups) */}
-        {activeTab === 'trends' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Middle Screen UI: Circular Radial Dial Gauge (5 cols) */}
-            <div className="lg:col-span-5 flex flex-col gap-4">
-              <CircularDialGauge
-                overallConfidence={overallConfidence}
-                measurements={measurements}
-                unit={unit}
-                userHeightCm={userHeightCm}
-              />
-            </div>
-
-            {/* Right Screen UI: SVG Wave Girth Trend Graph & Checklist (7 cols) */}
-            <div className="lg:col-span-7 flex flex-col gap-4">
-              <WaveFitGraph unit={unit} />
-            </div>
-          </div>
-        )}
-
-        {/* 3. MESH VISUALIZER TAB */}
-        {activeTab === 'visual' && (
-          <div className="flex flex-col items-center gap-4 w-full">
-            <h3 className="font-bold text-white text-base flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-cyan-400" />
-              <span>33-Point MediaPipe Pose Landmark Visualizer</span>
-            </h3>
-
-            <VisualLandmarkCanvas
-              imageSrc={scannedImage}
-              landmarks={landmarks}
-              measurements={measurements}
-              unit={unit}
-              width={540}
-              height={720}
-            />
-          </div>
-        )}
-
-        {/* 4. TAILOR ORDERS TAB */}
-        {activeTab === 'orders' && (
-          <TailorDashboard onSelectScan={() => setActiveTab('scan')} />
-        )}
-
-        {/* 5. AI SPEC ENGINE ARCHITECTURE */}
-        {activeTab === 'accuracy' && <AccuracyEngineInfo />}
       </main>
 
       {/* Printable Tailor PDF Tech Pack Report Modal */}
