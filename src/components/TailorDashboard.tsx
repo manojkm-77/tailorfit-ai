@@ -54,96 +54,77 @@ export const TailorDashboard: React.FC<TailorDashboardProps> = ({ onSelectScan }
   });
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-6xl mx-auto">
-      {/* Top Banner Summary Grid (Stripe Metric Cards) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="p-4 rounded-2xl bg-[#111318] border border-[#222630] flex items-center justify-between">
-          <div>
-            <div className="text-xs text-[#8b90a0]">Active Jobs</div>
-            <div className="text-2xl font-black text-white mt-1 font-mono">{orders.length}</div>
-          </div>
-          <div className="p-2.5 rounded-xl bg-[#181b22] border border-[#222630] text-white">
-            <Shirt className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#111318] border border-[#222630] flex items-center justify-between">
-          <div>
-            <div className="text-xs text-[#8b90a0]">In Cutting</div>
-            <div className="text-2xl font-black text-amber-400 mt-1 font-mono">
-              {orders.filter((o) => o.status === 'In Cutting').length}
-            </div>
-          </div>
-          <div className="p-2.5 rounded-xl bg-[#181b22] border border-[#222630] text-amber-400">
-            <Scissors className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#111318] border border-[#222630] flex items-center justify-between">
-          <div>
-            <div className="text-xs text-[#8b90a0]">Fitting Ready</div>
-            <div className="text-2xl font-black text-purple-400 mt-1 font-mono">
-              {orders.filter((o) => o.status === 'Fitting Ready').length}
-            </div>
-          </div>
-          <div className="p-2.5 rounded-xl bg-[#181b22] border border-[#222630] text-purple-400">
-            <UserCheck className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[#111318] border border-[#222630] flex items-center justify-between">
-          <div>
-            <div className="text-xs text-[#8b90a0]">AI Scans</div>
-            <div className="text-2xl font-black text-emerald-400 mt-1 font-mono">128</div>
-          </div>
-          <div className="p-2.5 rounded-xl bg-[#181b22] border border-[#222630] text-emerald-400">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Order Workflow Management Card */}
-      <div className="p-5 rounded-2xl bg-[#111318] border border-[#222630] flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Scissors className="w-4 h-4 text-white" />
-              <span>Tailor Order &amp; Pattern Cutting Dashboard</span>
-            </h2>
-            <p className="text-xs text-[#8b90a0] mt-0.5">Manage custom tailoring orders and AI scan measurement records.</p>
+    <div className="flex flex-col gap-6 w-full max-w-md mx-auto sm:max-w-3xl">
+      {/* Header Banner */}
+      <div className="wellness-card-green p-6 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Scissors className="w-5 h-5 text-[#0d484b]" />
+            <h2 className="text-xl font-extrabold text-[#1a2e30]">Tailor Order Dashboard</h2>
           </div>
 
           <button
             onClick={onSelectScan}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all hover:bg-white/90 shadow-sm"
+            className="px-4 py-2 rounded-full bg-[#0d484b] text-white text-xs font-bold shadow-md flex items-center gap-1.5"
           >
-            <Plus className="w-4 h-4 text-black" />
-            <span>New Body Measurement Scan</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Scan</span>
           </button>
         </div>
+        <p className="text-xs text-[#5b7173]">Manage client garment cutting orders and AI fit profiles.</p>
+      </div>
 
-        {/* Filters & Search Bar */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-3 border-t border-[#222630]">
+      {/* Summary Metric Cards (Pastel Cards) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+        <div className="wellness-card p-4 flex flex-col justify-between">
+          <div className="text-xs text-[#5b7173] font-sans">Active Orders</div>
+          <div className="text-2xl font-black text-[#1a2e30] mt-1">{orders.length}</div>
+        </div>
+
+        <div className="wellness-card-pink p-4 flex flex-col justify-between">
+          <div className="text-xs text-[#1a2e30] font-sans">In Cutting</div>
+          <div className="text-2xl font-black text-[#e88ab4] mt-1">
+            {orders.filter((o) => o.status === 'In Cutting').length}
+          </div>
+        </div>
+
+        <div className="wellness-card-lavender p-4 flex flex-col justify-between">
+          <div className="text-xs text-[#1a2e30] font-sans">Fitting Ready</div>
+          <div className="text-2xl font-black text-[#8b5cf6] mt-1">
+            {orders.filter((o) => o.status === 'Fitting Ready').length}
+          </div>
+        </div>
+
+        <div className="wellness-card-green p-4 flex flex-col justify-between">
+          <div className="text-xs text-[#1a2e30] font-sans">Scans Logged</div>
+          <div className="text-2xl font-black text-[#0d484b] mt-1">128</div>
+        </div>
+      </div>
+
+      {/* Main Orders Table Container */}
+      <div className="wellness-card p-5 flex flex-col gap-4">
+        {/* Search & Filter */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-[#1a2e30]/10">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-[#8b90a0] absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[#5b7173] absolute left-3.5 top-2.5" />
             <input
               type="text"
-              placeholder="Search customer name or order ID..."
+              placeholder="Search client name or order ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#181b22] border border-[#222630] text-xs text-white focus:border-white outline-none"
+              className="w-full pl-10 pr-4 py-2 rounded-full bg-[#ebf3f2] border border-[#1a2e30]/10 text-xs text-[#1a2e30] outline-none font-medium"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
             {['all', 'Pending', 'In Cutting', 'Fitting Ready', 'Completed'].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap border transition-all ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
                   statusFilter === st
-                    ? 'bg-white text-black border-white'
-                    : 'bg-[#181b22] border-[#222630] text-[#8b90a0] hover:text-white'
+                    ? 'bg-[#0d484b] text-white shadow'
+                    : 'bg-[#ebf3f2] text-[#5b7173] hover:text-[#1a2e30]'
                 }`}
               >
                 {st === 'all' ? 'All Orders' : st}
@@ -152,10 +133,10 @@ export const TailorDashboard: React.FC<TailorDashboardProps> = ({ onSelectScan }
           </div>
         </div>
 
-        {/* Responsive Orders Table */}
-        <div className="responsive-table-wrapper rounded-xl border border-[#222630] bg-[#090a0f]">
-          <table className="w-full text-left text-xs text-white min-w-[640px]">
-            <thead className="bg-[#181b22] text-[#8b90a0] uppercase font-mono text-[10px] border-b border-[#222630]">
+        {/* Orders Table */}
+        <div className="responsive-table-wrapper rounded-2xl overflow-hidden border border-[#1a2e30]/10">
+          <table className="w-full text-left text-xs text-[#1a2e30] min-w-[620px]">
+            <thead className="bg-[#ebf3f2] text-[#5b7173] uppercase font-mono text-[10px] border-b border-[#1a2e30]/10">
               <tr>
                 <th className="py-3 px-4">Order ID</th>
                 <th className="py-3 px-4">Customer Name</th>
@@ -165,21 +146,21 @@ export const TailorDashboard: React.FC<TailorDashboardProps> = ({ onSelectScan }
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#222630] font-medium">
+            <tbody className="divide-y divide-[#1a2e30]/10 font-medium">
               {filteredOrders.map((ord) => (
-                <tr key={ord.orderId} className="hover:bg-[#181b22] transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-white">{ord.orderId}</td>
-                  <td className="py-3.5 px-4 font-semibold text-white">{ord.customerName}</td>
-                  <td className="py-3.5 px-4 text-[#8b90a0]">{ord.garmentType}</td>
-                  <td className="py-3.5 px-4 text-[#8b90a0]">{ord.assignedTailor}</td>
+                <tr key={ord.orderId} className="hover:bg-[#ebf3f2]/50 transition-colors">
+                  <td className="py-3.5 px-4 font-mono font-bold text-[#0d484b]">{ord.orderId}</td>
+                  <td className="py-3.5 px-4 font-bold text-[#1a2e30]">{ord.customerName}</td>
+                  <td className="py-3.5 px-4 text-[#5b7173]">{ord.garmentType}</td>
+                  <td className="py-3.5 px-4 text-[#5b7173]">{ord.assignedTailor}</td>
                   <td className="py-3.5 px-4">
                     <span
                       className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap inline-block ${
                         ord.status === 'In Cutting'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          ? 'bg-[#fce8f3] text-[#e88ab4]'
                           : ord.status === 'Fitting Ready'
-                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          ? 'bg-[#ece7f9] text-[#8b5cf6]'
+                          : 'bg-[#dcf2eb] text-[#0d484b]'
                       }`}
                     >
                       {ord.status}
@@ -188,7 +169,7 @@ export const TailorDashboard: React.FC<TailorDashboardProps> = ({ onSelectScan }
                   <td className="py-3.5 px-4 text-right">
                     <button
                       onClick={onSelectScan}
-                      className="px-3 py-1.5 rounded-lg bg-[#181b22] border border-[#222630] text-white hover:border-white/30 text-xs font-semibold inline-flex items-center gap-1 transition-all"
+                      className="px-3 py-1.5 rounded-full bg-[#ebf3f2] hover:bg-[#dcf2eb] text-[#0d484b] text-xs font-bold inline-flex items-center gap-1 transition-all"
                     >
                       <span>View Specs</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />

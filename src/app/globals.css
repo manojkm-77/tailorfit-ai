@@ -3,91 +3,97 @@
 @tailwind utilities;
 
 :root {
-  --bg-obsidian: #08080a;
-  --card-obsidian: #121215;
-  --card-elevated: #18181c;
-  --border-obsidian: rgba(255, 255, 255, 0.08);
-  --text-white: #ffffff;
-  --text-muted: #9ea0a6;
-  --accent-emerald: #10b981;
-  --accent-cyan: #06b6d4;
-  --accent-violet: #8b5cf6;
+  --bg-pastel-base: #ebf3f2;
+  --card-white: #ffffff;
+  --card-pink: #fce8f3;
+  --card-green: #dcf2eb;
+  --card-lavender: #ece7f9;
+  --text-dark: #1a2e30;
+  --text-muted: #5b7173;
+  --accent-teal: #0d484b;
+  --accent-pink: #e88ab4;
+  --border-subtle: rgba(26, 46, 48, 0.06);
 }
 
 body {
-  background-color: var(--bg-obsidian);
-  color: var(--text-white);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', sans-serif;
+  background-color: var(--bg-pastel-base);
+  color: var(--text-dark);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'SF Pro Text', 'Nunito', 'Inter', sans-serif;
   overflow-x: hidden;
   min-height: 100vh;
   margin: 0;
   padding: 0;
 }
 
-/* Custom Scrollbars */
+/* Custom Soft Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #08080a;
+  background: #ebf3f2;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: #c3d9d6;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #06b6d4;
+  background: #0d484b;
 }
 
-/* Obsidian Card Utility Classes matching reference mockup */
-.obsidian-card {
-  background-color: #121215;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.5rem; /* 24px rounded corners */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-}
-
-.obsidian-card-elevated {
-  background-color: #18181c;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 1.5rem;
-}
-
-.obsidian-pill {
-  background-color: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
-  color: #ffffff;
-}
-
-.obsidian-pill-active {
+/* Soft Pastel Wellness Card Utility Classes (Matching Reference Image) */
+.wellness-card {
   background-color: #ffffff;
-  color: #000000;
+  border-radius: 1.75rem; /* 28px rounded corners matching reference UI */
+  box-shadow: 0 10px 25px rgba(13, 72, 75, 0.04), 0 2px 6px rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(26, 46, 48, 0.06);
+}
+
+.wellness-card-pink {
+  background-color: #fce8f3;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(232, 138, 180, 0.2);
+}
+
+.wellness-card-green {
+  background-color: #dcf2eb;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(13, 72, 75, 0.1);
+}
+
+.wellness-card-lavender {
+  background-color: #ece7f9;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.wellness-pill-primary {
+  background-color: #0d484b;
+  color: #ffffff;
+  border-radius: 9999px;
   font-weight: 700;
+  box-shadow: 0 4px 14px rgba(13, 72, 75, 0.2);
 }
 
-/* Circular Radial Scanner Animation */
-@keyframes spinSlow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.wellness-pill-secondary {
+  background-color: #ffffff;
+  color: #1a2e30;
+  border-radius: 9999px;
+  border: 1px solid rgba(26, 46, 48, 0.1);
+  font-weight: 600;
 }
 
-.animate-spin-slow {
-  animation: spinSlow 20s linear infinite;
+/* Soothing Animations */
+@keyframes pulseGentle {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.04); opacity: 1; }
 }
 
-/* Wave line pulse animation */
-@keyframes wavePulse {
-  0%, 100% { opacity: 0.85; }
-  50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5)); }
+.animate-pulse-gentle {
+  animation: pulseGentle 3s ease-in-out infinite;
 }
 
-.animate-wave-pulse {
-  animation: wavePulse 3s ease-in-out infinite;
-}
-
-/* Responsive Table Scroll Container */
+/* Responsive Table Wrapper */
 .responsive-table-wrapper {
   width: 100%;
   overflow-x: auto;
