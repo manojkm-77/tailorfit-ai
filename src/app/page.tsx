@@ -14,6 +14,7 @@ import { TailorReportModal } from '@/components/TailorReportModal';
 import { PoseLandmarks33, BodyMeasurementItem } from '@/types/measurement';
 import { SAMPLE_MALE_LANDMARKS } from '@/lib/sampleModels';
 import { calculateTailoringMeasurements } from '@/lib/measurementEngine';
+import { AccuracyValidationResult, validateStrictQualityGates } from '@/lib/validationEngine';
 
 export default function Home() {
   const [activePage, setActivePage] = useState<PageView>('home');
@@ -23,9 +24,12 @@ export default function Home() {
   const [unit, setUnit] = useState<'cm' | 'inches'>('cm');
   const [gender, setGender] = useState<'male' | 'female'>('male');
 
-  // Capture State
+  // Capture & Quality State
   const [scannedImage, setScannedImage] = useState<string | null>(null);
   const [landmarks, setLandmarks] = useState<PoseLandmarks33 | null>(SAMPLE_MALE_LANDMARKS);
+  const [validationResult, setValidationResult] = useState<AccuracyValidationResult | null>(() =>
+    validateStrictQualityGates(SAMPLE_MALE_LANDMARKS, SAMPLE_MALE_LANDMARKS)
+  );
 
   // Measurements State
   const [measurements, setMeasurements] = useState<BodyMeasurementItem[]>(() =>
@@ -40,11 +44,18 @@ export default function Home() {
     imageUri: string,
     detectedLandmarks: PoseLandmarks33,
     selectedGender: 'male' | 'female' = 'male',
-    sideLandmarks: PoseLandmarks33 | null = null
+    sideLandmarks: PoseLandmarks33 | null = null,
+    validation: AccuracyValidationResult | null = null
   ) => {
     setScannedImage(imageUri);
     setLandmarks(detectedLandmarks);
     setGender(selectedGender);
+
+    if (validation) {
+      setValidationResult(validation);
+    } else {
+      setValidationResult(validateStrictQualityGates(detectedLandmarks, sideLandmarks));
+    }
 
     const calculated = calculateTailoringMeasurements(
       detectedLandmarks,
@@ -90,7 +101,7 @@ export default function Home() {
     );
   };
 
-  const overallConfidence = 98.4;
+  const overallConfidence = validationResult?.overallConfidence ?? 98.4;
 
   return (
     <div className="min-h-screen bg-[#ebf3f2] text-[#1a2e30] flex flex-col font-sans">
@@ -119,12 +130,13 @@ export default function Home() {
         {/* Page 2: Photo Upload */}
         {activePage === 'photo_upload' && (
           <PhotoUploadScan
-            onProcessImages={(front, _side, _back, fLms, sLms, _bLms, g) =>
-              handlePoseCaptured(front, fLms, g, sLms)
+            onProcessImages={(front, _side, _back, fLms, sLms, _bLms, g, val) =>
+              handlePoseCaptured(front, fLms, g, sLms, val)
             }
             selectedGender={gender}
             onGenderChange={setGender}
             onSwitchToCamera={() => setActivePage('camera_scan')}
+            userHeightCm={userHeightCm}
           />
         )}
 
@@ -151,6 +163,8 @@ export default function Home() {
             onUpdateMeasurement={handleUpdateMeasurement}
             onOpenPdfReport={() => setIsPdfModalOpen(true)}
             overallConfidence={overallConfidence}
+            validation={validationResult}
+            userHeightCm={userHeightCm}
           />
         )}
 

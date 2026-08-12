@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { BodyMeasurementItem, MeasurementCategory } from '@/types/measurement';
-import { Download, FileText, CheckCircle2, Edit2, ArrowRight } from 'lucide-react';
+import { Download, FileText, CheckCircle2, Edit2, ArrowRight, ShieldCheck } from 'lucide-react';
+import { AccuracyValidationResult } from '@/lib/validationEngine';
+import { AccuracyDashboard } from '@/components/AccuracyDashboard';
 
 interface MeasurementResultsProps {
   measurements: BodyMeasurementItem[];
@@ -11,6 +13,8 @@ interface MeasurementResultsProps {
   onUpdateMeasurement: (id: string, newValCm: number) => void;
   onOpenPdfReport: () => void;
   overallConfidence: number;
+  validation?: AccuracyValidationResult | null;
+  userHeightCm: number;
 }
 
 export const MeasurementResults: React.FC<MeasurementResultsProps> = ({
@@ -20,6 +24,8 @@ export const MeasurementResults: React.FC<MeasurementResultsProps> = ({
   onUpdateMeasurement,
   onOpenPdfReport,
   overallConfidence,
+  validation,
+  userHeightCm,
 }) => {
   const [activeCategory, setActiveCategory] = useState<MeasurementCategory | 'all'>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -56,14 +62,17 @@ export const MeasurementResults: React.FC<MeasurementResultsProps> = ({
       <div className="wellness-card-green p-6 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-extrabold text-[#1a2e30]">Your Calculated Body Fit</h2>
-            <p className="text-xs text-[#5b7173] mt-0.5">20 Tailoring dimensions ready for garment pattern cutting.</p>
+            <h2 className="text-xl font-extrabold text-[#1a2e30]">Validated Body Fit Specs</h2>
+            <p className="text-xs text-[#5b7173] mt-0.5">20 Perimeters extracted with strict accuracy quality gates.</p>
           </div>
-          <span className="px-3 py-1 rounded-full bg-white text-[11px] font-bold text-[#0d484b] shadow-sm">
+          <span className="px-3.5 py-1 rounded-full bg-white text-xs font-extrabold text-[#0d484b] shadow-sm">
             {overallConfidence}% Lock
           </span>
         </div>
       </div>
+
+      {/* Accuracy Inspector Dashboard */}
+      {validation && <AccuracyDashboard validation={validation} userHeightCm={userHeightCm} />}
 
       {/* Category Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -82,12 +91,13 @@ export const MeasurementResults: React.FC<MeasurementResultsProps> = ({
         ))}
       </div>
 
-      {/* Metric Cards Grid (Wellness Pastel Style) */}
+      {/* Metric Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         {filteredMeasurements.map((item) => {
           const displayVal = unit === 'cm' ? item.valueCm : item.valueInches;
           const unitLabel = unit === 'cm' ? 'cm' : 'in';
           const isEditing = editingId === item.id;
+          const confScore = Math.round(item.confidenceScore * 10) / 10;
 
           return (
             <div
@@ -128,7 +138,7 @@ export const MeasurementResults: React.FC<MeasurementResultsProps> = ({
                 )}
 
                 <span className="text-[10px] font-mono text-[#0d484b] bg-[#dcf2eb] px-2.5 py-0.5 rounded-full font-bold">
-                  {Math.round(item.confidenceScore)}% Score
+                  {confScore}% Conf
                 </span>
               </div>
             </div>
@@ -136,13 +146,13 @@ export const MeasurementResults: React.FC<MeasurementResultsProps> = ({
         })}
       </div>
 
-      {/* SINGLE PRIMARY CTA BUTTON FOR TECH PACK GENERATION */}
+      {/* SINGLE PRIMARY CTA */}
       <button
         onClick={onOpenPdfReport}
         className="wellness-pill-primary px-8 py-3.5 text-sm font-extrabold flex items-center justify-center gap-2 shadow-md mt-2"
       >
         <FileText className="w-4 h-4" />
-        <span>Save Fit Profile &amp; Export Tech Pack</span>
+        <span>Save Profile &amp; Export Tech Pack</span>
         <ArrowRight className="w-4 h-4" />
       </button>
     </div>

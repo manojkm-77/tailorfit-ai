@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { UploadCloud, CheckCircle2, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertCircle, ArrowRight, Loader2, Cpu, XCircle } from 'lucide-react';
 import { PoseLandmarks33 } from '@/types/measurement';
 import { detectPoseFromImage, initPoseDetector } from '@/lib/mediapipeClient';
-import { PageView } from './Header';
+import { inspectImageQuality, validateStrictQualityGates, AccuracyValidationResult, ImageQualityMetrics } from '@/lib/validationEngine';
+import { AccuracyDashboard } from '@/components/AccuracyDashboard';
 
 interface PhotoUploadScanProps {
   onProcessImages: (
@@ -14,11 +15,13 @@ interface PhotoUploadScanProps {
     frontLandmarks: PoseLandmarks33,
     sideLandmarks: PoseLandmarks33 | null,
     backLandmarks: PoseLandmarks33 | null,
-    gender: 'male' | 'female'
+    gender: 'male' | 'female',
+    validation: AccuracyValidationResult
   ) => void;
   selectedGender: 'male' | 'female';
   onGenderChange: (g: 'male' | 'female') => void;
   onSwitchToCamera: () => void;
+  userHeightCm: number;
 }
 
 type ViewKey = 'front' | 'side';
@@ -26,8 +29,8 @@ type EngineState = 'loading' | 'ready' | 'unavailable';
 type ViewDetectState = 'idle' | 'detecting' | 'detected' | 'failed';
 
 const VIEW_LABELS: Record<ViewKey, { title: string; hint: string }> = {
-  front: { title: 'Front Photo (Required)', hint: 'Primary Height & Width' },
-  side: { title: 'Side Photo (Optional)', hint: '+4% Depth Accuracy' },
+  front: { title: 'Front View (Required)', hint: 'Full Height & Width' },
+  side: { title: 'Side View (Required)', hint: '3D Depth Profile' },
 };
 
 export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
@@ -35,6 +38,7 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
   selectedGender,
   onGenderChange,
   onSwitchToCamera,
+  userHeightCm,
 }) => {
   const [engineState, setEngineState] = useState<EngineState>('loading');
   const [images, setImages] = useState<Record<ViewKey, string | null>>({
@@ -42,6 +46,10 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
     side: null,
   });
   const [landmarks, setLandmarks] = useState<Record<ViewKey, PoseLandmarks33 | null>>({
+    front: null,
+    side: null,
+  });
+  const [qualities, setQualities] = useState<Record<ViewKey, ImageQualityMetrics | null>>({
     front: null,
     side: null,
   });
@@ -54,6 +62,7 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
     side: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationResult, setValidationResult] = useState<AccuracyValidationResult | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -65,11 +74,14 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
     };
   }, []);
 
-  const runDetectionOnView = async (view: ViewKey, dataUrl: string) => {
+  const runDetectionOnView = async (view: ViewKey, dataUrl: string, imgElement: HTMLImageElement) => {
     setDetectStates((prev) => ({ ...prev, [view]: 'detecting' }));
     setErrors((prev) => ({ ...prev, [view]: null }));
 
     try {
+      const quality = inspectImageQuality(imgElement);
+      setQualities((prev) => ({ ...prev, [view]: quality }));
+
       const res = await detectPoseFromImage(dataUrl);
       if (res.landmarks) {
         setLandmarks((prev) => ({ ...prev, [view]: res.landmarks }));
@@ -79,7 +91,7 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
         setDetectStates((prev) => ({ ...prev, [view]: 'failed' }));
         setErrors((prev) => ({
           ...prev,
-          [view]: 'No full-body pose detected. Ensure full head-to-toe visibility in bright light.',
+          [view]: 'No full-body pose detected. Ensure head-to-heel visibility in bright light.',
         }));
       }
     } catch (err) {
@@ -97,15 +109,41 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
     reader.onload = (e) => {
       const result = e.target?.result as string;
       setImages((prev) => ({ ...prev, [view]: result }));
-      runDetectionOnView(view, result);
+
+      const imgEl = new Image();
+      imgEl.onload = () => runDetectionOnView(view, result, imgEl);
+      imgEl.src = result;
     };
     reader.readAsDataURL(file);
   };
 
-  const canExtract = Boolean(images.front && detectStates.front === 'detected' && landmarks.front);
+  // Re-run quality gate inspection whenever landmarks update
+  useEffect(() => {
+    if (landmarks.front || landmarks.side) {
+      const val = validateStrictQualityGates(
+        landmarks.front,
+        landmarks.side,
+        qualities.front ?? undefined,
+        qualities.side ?? undefined
+      );
+      setValidationResult(val);
+    } else {
+      setValidationResult(null);
+    }
+  }, [landmarks, qualities]);
+
+  const canExtract = Boolean(
+    images.front &&
+      images.side &&
+      detectStates.front === 'detected' &&
+      detectStates.side === 'detected' &&
+      landmarks.front &&
+      landmarks.side &&
+      validationResult?.isValid
+  );
 
   const handleExtract = () => {
-    if (!canExtract || !landmarks.front || !images.front) return;
+    if (!canExtract || !landmarks.front || !images.front || !validationResult) return;
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
@@ -116,7 +154,8 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
         landmarks.front!,
         landmarks.side,
         null,
-        selectedGender
+        selectedGender,
+        validationResult
       );
     }, 300);
   };
@@ -126,7 +165,7 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
       {/* Header Banner */}
       <div className="wellness-card-green p-6 flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-extrabold text-[#1a2e30]">Photo Upload Scan</h2>
+          <h2 className="text-xl font-extrabold text-[#1a2e30]">Strict Quality Scan Upload</h2>
           <button
             onClick={onSwitchToCamera}
             className="px-3.5 py-1.5 rounded-full bg-white text-[#0d484b] text-xs font-bold shadow-sm"
@@ -134,7 +173,9 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
             Use Camera Instead
           </button>
         </div>
-        <p className="text-xs text-[#5b7173]">Select front &amp; side body photos for AI fitting calculation.</p>
+        <p className="text-xs text-[#5b7173]">
+          Both Front &amp; Side photos are mandatory for 3D depth calculation &amp; perimeter validation.
+        </p>
       </div>
 
       {/* Fitting Profile Selector */}
@@ -167,7 +208,6 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
           const img = images[view];
           const st = detectStates[view];
           const err = errors[view];
-          const isFront = view === 'front';
 
           return (
             <div key={view} className="flex flex-col gap-2">
@@ -180,9 +220,7 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
                 className={`relative flex flex-col items-center justify-center h-52 rounded-3xl border-2 border-dashed bg-white cursor-pointer overflow-hidden transition-all shadow-sm ${
                   st === 'detected'
                     ? 'border-emerald-500'
-                    : isFront
-                    ? 'border-[#0d484b]/40 hover:border-[#0d484b]'
-                    : 'border-[#1a2e30]/15 hover:border-[#1a2e30]/30'
+                    : 'border-[#0d484b]/30 hover:border-[#0d484b]'
                 }`}
               >
                 {img ? (
@@ -192,7 +230,7 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
                     {st === 'detecting' && (
                       <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
                         <Loader2 className="w-6 h-6 text-[#0d484b] animate-spin" />
-                        <span className="text-xs font-bold text-[#0d484b]">Detecting Pose…</span>
+                        <span className="text-xs font-bold text-[#0d484b]">Inspecting Pose &amp; Quality…</span>
                       </div>
                     )}
 
@@ -214,7 +252,7 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
                   <div className="flex flex-col items-center gap-2 p-4 text-center">
                     <UploadCloud className="w-8 h-8 text-[#0d484b]" />
                     <span className="text-xs font-extrabold text-[#1a2e30]">Select {view} photo</span>
-                    <span className="text-[10px] text-[#5b7173]">JPG, PNG up to 10MB</span>
+                    <span className="text-[10px] text-[#5b7173]">Head-to-toe full body</span>
                   </div>
                 )}
 
@@ -230,6 +268,11 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
         })}
       </div>
 
+      {/* Accuracy & Validation Inspection Dashboard */}
+      {validationResult && (
+        <AccuracyDashboard validation={validationResult} userHeightCm={userHeightCm} />
+      )}
+
       {/* SINGLE PRIMARY CTA */}
       <button
         onClick={handleExtract}
@@ -239,11 +282,11 @@ export const PhotoUploadScan: React.FC<PhotoUploadScanProps> = ({
         {isSubmitting ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Calculating Fit Contours…</span>
+            <span>Verifying Quality &amp; Calculating Specs…</span>
           </>
         ) : (
           <>
-            <span>Start AI Body Fitting</span>
+            <span>Extract Validated Measurements</span>
             <ArrowRight className="w-4 h-4" />
           </>
         )}
